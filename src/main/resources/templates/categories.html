@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Category Management - Restaurant Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        .bg-bd-emerald { background-color: #006a4e !important; color: white !important; }
+        .bg-bd-red { background-color: #f42a41 !important; color: white !important; }
+    </style>
+</head>
+<body class="bg-light">
+
+    <!-- Professional Enterprise Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-bd-emerald shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2" href="/menu"><i class="bi bi-shop text-warning fs-3"></i> Restaurant Pro <span class="badge bg-bd-red fs-6 font-monospace">BD Edition</span></a>
+            <div class="collapse navbar-collapse">
+                <div class="navbar-nav me-auto">
+                    <!-- Admin Only -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/">Dashboard</a>
+                    
+                    <!-- Public / Everyone -->
+                    <a class="nav-link" href="/menu">Browse Menu</a>
+                    
+                    <!-- Customer Only -->
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/orders/new">Place Order</a>
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/ai-assistant">Chef Recommendations</a>
+                    
+                    <!-- Staff & Admin Only -->
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders">All Orders</a>
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders/new">POS Order Entry</a>
+                    
+                    <!-- Admin Only Management -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link active fw-bold" href="/categories">Categories</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/add-food">Add New Dish</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/ai-assistant">Chef Recommendations</a>
+                </div>
+                
+                <div class="d-flex align-items-center gap-2">
+                    <span sec:authorize="isAuthenticated()" class="badge bg-light text-dark fw-semibold px-3 py-2">
+                        <span sec:authentication="name">User</span> 
+                        (<span sec:authorize="hasRole('ADMIN')">ADMIN</span><span sec:authorize="hasRole('STAFF')">STAFF</span><span sec:authorize="hasRole('CUSTOMER')">CUSTOMER</span>)
+                    </span>
+                    <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-light btn-sm fw-semibold">Logout</button>
+                    </form>
+                    <a sec:authorize="isAnonymous()" href="/login" class="btn btn-outline-light btn-sm fw-semibold">Sign In</a>
+                    <a sec:authorize="isAnonymous()" href="/register" class="btn btn-warning btn-sm fw-semibold text-dark">Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        
+        <!-- Alerts -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${success}">Success message</span>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span th:text="${error}">Error message</span>
+        </div>
+
+        <div class="row g-4">
+            <!-- Add / Edit Category Form -->
+            <div class="col-md-5">
+                <div class="card shadow-sm p-4 rounded-4">
+                    <h4 class="fw-bold mb-3" th:text="${category.id != null} ? 'Edit Category' : 'Add Category'">Category Form</h4>
+                    <form th:action="@{/categories/save}" th:object="${category}" method="post">
+                        <input type="hidden" th:field="*{id}" />
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Category Name</label>
+                            <input type="text" th:field="*{name}" class="form-control" placeholder="e.g. Kacchi & Biryani Special" required>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success w-100 fw-bold">Save Category</button>
+                            <a th:if="${category.id != null}" href="/categories" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Categories List Table -->
+            <div class="col-md-7">
+                <div class="card shadow-sm p-3 rounded-4">
+                    <h4 class="fw-bold mb-3">Food Categories</h4>
+                    <table class="table table-hover align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Category Name</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="cat : ${categories}">
+                                <td th:text="${cat.id}">1</td>
+                                <td class="fw-bold text-success" th:text="${cat.name}">Category Name</td>
+                                <td class="text-end">
+                                    <a th:href="@{/categories/edit/{id}(id=${cat.id})}" class="btn btn-sm btn-outline-primary me-1">Edit</a>
+                                    <a th:href="@{/categories/delete/{id}(id=${cat.id})}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this category?')">Delete</a>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(categories)}">
+                                <td colspan="3" class="text-center text-muted">No categories created yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Executive Dashboard - Restaurant Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        .bg-bd-emerald { background-color: #006a4e !important; color: white !important; }
+        .bg-bd-red { background-color: #f42a41 !important; color: white !important; }
+        .border-bd-emerald { border-left: 5px solid #006a4e !important; }
+    </style>
+</head>
+<body class="bg-light">
+
+    <!-- Professional Enterprise Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-bd-emerald shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2" href="/menu"><i class="bi bi-shop text-warning fs-3"></i> Restaurant Pro <span class="badge bg-bd-red fs-6 font-monospace">BD Edition</span></a>
+            <div class="collapse navbar-collapse">
+                <div class="navbar-nav me-auto">
+                    <!-- Admin Only -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link active fw-bold" href="/">Dashboard</a>
+                    
+                    <!-- Public / Everyone -->
+                    <a class="nav-link" href="/menu">Browse Menu</a>
+                    
+                    <!-- Customer Only -->
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/orders/new">Place Order</a>
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/ai-assistant">Chef Recommendations</a>
+                    
+                    <!-- Staff & Admin Only -->
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders">All Orders</a>
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders/new">POS Order Entry</a>
+                    
+                    <!-- Admin Only Management -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/categories">Categories</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/add-food">Add New Dish</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/ai-assistant">Chef Recommendations</a>
+                </div>
+                
+                <div class="d-flex align-items-center gap-2">
+                    <span sec:authorize="isAuthenticated()" class="badge bg-light text-dark fw-semibold px-3 py-2">
+                        <span sec:authentication="name">User</span> 
+                        (<span sec:authorize="hasRole('ADMIN')">ADMIN</span><span sec:authorize="hasRole('STAFF')">STAFF</span><span sec:authorize="hasRole('CUSTOMER')">CUSTOMER</span>)
+                    </span>
+                    <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-light btn-sm fw-semibold">Logout</button>
+                    </form>
+                    <a sec:authorize="isAnonymous()" href="/login" class="btn btn-outline-light btn-sm fw-semibold">Sign In</a>
+                    <a sec:authorize="isAnonymous()" href="/register" class="btn btn-warning btn-sm fw-semibold text-dark">Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4 mb-5">
+        <div class="p-4 bg-white rounded shadow-sm mb-4 border-bd-emerald">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="fw-bold mb-1">Executive Sales Report & Business Analytics</h2>
+                    <p class="text-muted mb-0">Live revenue metrics in Bangladeshi Taka (৳ BDT) computed from completed sales</p>
+                </div>
+                <span class="badge bg-success p-2 fs-6">bKash / Nagad Active</span>
+            </div>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card bg-bd-emerald text-white p-3 shadow-sm rounded-4">
+                    <h5 class="fw-semibold">Total Revenue</h5>
+                    <h3 class="fw-bold">৳<span th:text="${#numbers.formatDecimal(totalRevenue, 1, 2)}">0.00</span> BDT</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white p-3 shadow-sm rounded-4">
+                    <h5 class="fw-semibold">Total Completed Orders</h5>
+                    <h3 class="fw-bold" th:text="${totalOrders}">0</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark p-3 shadow-sm rounded-4">
+                    <h5 class="fw-semibold">Avg Order Value</h5>
+                    <h3 class="fw-bold">৳<span th:text="${#numbers.formatDecimal(avgOrder, 1, 2)}">0.00</span> BDT</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-bd-red text-white p-3 shadow-sm rounded-4">
+                    <h5 class="fw-semibold">Menu Dishes</h5>
+                    <h3 class="fw-bold" th:text="${foodCount}">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Shortcut Buttons -->
+        <div class="card p-4 shadow-sm rounded-4">
+            <h5 class="fw-bold mb-3">Quick Restaurant Management Actions</h5>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="/orders/new" class="btn btn-success btn-lg fw-bold px-4">New Order (Dine-in / Delivery)</a>
+                <a href="/orders" class="btn btn-dark btn-lg fw-bold px-4">Orders & Billing</a>
+                <a href="/menu" class="btn btn-outline-dark btn-lg fw-bold px-4">Browse Menu</a>
+                <a sec:authorize="hasRole('ADMIN')" href="/categories" class="btn btn-outline-success btn-lg fw-bold px-4">Food Categories</a>
+                <a sec:authorize="hasRole('ADMIN')" href="/add-food" class="btn btn-outline-primary btn-lg fw-bold px-4">Add New Dish</a>
+                <a sec:authorize="hasRole('ADMIN')" href="/ai-assistant" class="btn btn-outline-danger btn-lg fw-bold px-4">Chef Recommendations</a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

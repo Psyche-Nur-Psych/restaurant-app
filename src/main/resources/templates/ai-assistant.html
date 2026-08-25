@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Chef Recommendations & AI Food Assistant - Restaurant Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        .bg-bd-emerald { background-color: #006a4e !important; color: white !important; }
+        .bg-bd-red { background-color: #f42a41 !important; color: white !important; }
+    </style>
+</head>
+<body class="bg-light">
+
+    <!-- Professional Enterprise Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-bd-emerald shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2" href="/menu"><i class="bi bi-shop text-warning fs-3"></i> Restaurant Pro <span class="badge bg-bd-red fs-6 font-monospace">BD Edition</span></a>
+            <div class="collapse navbar-collapse">
+                <div class="navbar-nav me-auto">
+                    <!-- Admin Only -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/">Dashboard</a>
+                    
+                    <!-- Public / Everyone -->
+                    <a class="nav-link" href="/menu">Browse Menu</a>
+                    
+                    <!-- Customer Only -->
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/orders/new">Place Order</a>
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link active fw-bold" href="/ai-assistant">Chef Recommendations</a>
+                    
+                    <!-- Staff & Admin Only -->
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders">All Orders</a>
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders/new">POS Order Entry</a>
+                    
+                    <!-- Admin Only Management -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/categories">Categories</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/add-food">Add New Dish</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link active fw-bold" href="/ai-assistant">Chef Recommendations</a>
+                </div>
+                
+                <div class="d-flex align-items-center gap-2">
+                    <span sec:authorize="isAuthenticated()" class="badge bg-light text-dark fw-semibold px-3 py-2">
+                        <span sec:authentication="name">User</span> 
+                        (<span sec:authorize="hasRole('ADMIN')">ADMIN</span><span sec:authorize="hasRole('STAFF')">STAFF</span><span sec:authorize="hasRole('CUSTOMER')">CUSTOMER</span>)
+                    </span>
+                    <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-light btn-sm fw-semibold">Logout</button>
+                    </form>
+                    <a sec:authorize="isAnonymous()" href="/login" class="btn btn-outline-light btn-sm fw-semibold">Sign In</a>
+                    <a sec:authorize="isAnonymous()" href="/register" class="btn btn-warning btn-sm fw-semibold text-dark">Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4 mb-5">
+
+        <div class="p-4 bg-white rounded-4 shadow-sm mb-4 border-start border-success border-5">
+            <h2 class="fw-bold mb-1">Bangla Feast & Interactive AI Food Assistant</h2>
+            <p class="text-muted mb-0">Ask our AI Chef Assistant about available dishes, lucrative food descriptions, prices, and royal combo meals!</p>
+        </div>
+
+        <!-- Interactive AI Food Assistant Chatbot Section -->
+        <div class="card shadow p-4 rounded-4 mb-4 border-0">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="bg-success text-white rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                    <i class="bi bi-robot fs-3"></i>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-0 text-dark">Interactive AI Food Assistant</h3>
+                    <p class="text-muted mb-0 small">Ask anything about available foods, prices, spicy dishes, or royal feast recommendations!</p>
+                </div>
+            </div>
+
+            <!-- Quick Suggestion Chips -->
+            <div class="mb-3 d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-success btn-sm rounded-pill fw-semibold" onclick="sendQuickPrompt('Suggest a Royal Feast Lunch!')">🍛 Royal Feast Lunch</button>
+                <button type="button" class="btn btn-outline-success btn-sm rounded-pill fw-semibold" onclick="sendQuickPrompt('Tell me about Chittagong Beef Kala Bhuna')">🥩 Beef Kala Bhuna</button>
+                <button type="button" class="btn btn-outline-success btn-sm rounded-pill fw-semibold" onclick="sendQuickPrompt('What are your best drinks & beverages?')">🥤 Best Drinks & Cha</button>
+                <button type="button" class="btn btn-outline-success btn-sm rounded-pill fw-semibold" onclick="sendQuickPrompt('Show me authentic sweets and desserts')">🍧 Bogura Mishti Doi</button>
+                <button type="button" class="btn btn-outline-dark btn-sm rounded-pill fw-semibold" onclick="sendQuickPrompt('List all available menu items')">📜 Full Food Menu</button>
+            </div>
+
+            <!-- AI Response Display Box -->
+            <div id="aiResponseBox" class="p-3 bg-light rounded-4 border mb-3" style="min-height: 120px;">
+                <div class="text-muted text-center py-4">
+                    <i class="bi bi-chat-left-text fs-2 text-success mb-2 d-block"></i>
+                    <span>Ask a question above or type your dish query below to receive lucrative chef descriptions!</span>
+                </div>
+            </div>
+
+            <!-- Interactive Query Form -->
+            <form id="aiQueryForm" onsubmit="submitAiQuery(event)" class="row g-2">
+                <input type="hidden" name="_csrf" th:value="${_csrf != null ? _csrf.token : ''}" />
+                <div class="col-md-9">
+                    <input type="text" id="userQueryInput" class="form-control form-control-lg" placeholder="Type your food question... e.g. 'What is special in Biryani?' or 'Recommend dinner'" required>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" id="askBtn" class="btn btn-success btn-lg w-100 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+                        <span>Ask AI Assistant</span> <i class="bi bi-send-fill"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="row g-4">
+            
+            <!-- Daily Chef Specials Card -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100 border-0 bg-success-subtle text-success-emphasis p-4 rounded-4">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <h4 class="fw-bold mb-0">Shahi Chef Special Announcement</h4>
+                    </div>
+                    <p class="card-text fs-5" th:text="${dailySpecials}">Chef special message...</p>
+                </div>
+            </div>
+
+            <!-- Combo Deal Package Card -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100 border-0 bg-warning-subtle text-warning-emphasis p-4 rounded-4">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <h4 class="fw-bold mb-0">Old Dhaka Royal Combo Recommendation</h4>
+                    </div>
+                    <p class="card-text fs-5" th:text="${comboDeals}">Combo deal message...</p>
+                </div>
+            </div>
+
+            <!-- Customer Review Sentiment Summary -->
+            <div class="col-md-12">
+                <div class="card shadow-sm border-0 bg-danger-subtle text-danger-emphasis p-4 rounded-4">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <h4 class="fw-bold mb-0">Bangladesh Foodie Sentiment Analysis</h4>
+                    </div>
+                    <p class="card-text fs-5 mb-0" th:text="${reviewSummary}">Review summary...</p>
+                </div>
+            </div>
+
+            <!-- Interactive Description Generator (ADMIN Only) -->
+            <div sec:authorize="hasRole('ADMIN')" class="col-md-12">
+                <div class="card shadow-sm p-4 rounded-4">
+                    <h4 class="fw-bold mb-3">Dish Description & Auto-Category Generator</h4>
+                    <form th:action="@{/ai-assistant/generate-description}" method="post" class="row g-3">
+                        <div class="col-md-8">
+                            <input type="text" name="foodName" th:value="${customFoodName}" class="form-control form-control-lg" placeholder="Type dish name, e.g. Shahi Beef Tehari or Srimangal Masala Milk Cha" required>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-success btn-lg w-100 fw-bold">Generate Description</button>
+                        </div>
+                    </form>
+
+                    <div th:if="${generatedDescription}" class="mt-4 p-3 bg-light rounded-4 border">
+                        <h5 class="fw-bold text-dark mb-2">Generated Marketing Description:</h5>
+                        <p class="text-success fw-semibold fs-5 mb-3" th:text="${generatedDescription}">Description</p>
+                        <h6 class="fw-bold text-dark mb-1">Suggested Category:</h6>
+                        <span class="badge bg-success fs-6" th:text="${suggestedCategory}">Category</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Interactive AI Assistant JavaScript Logic -->
+    <script>
+        function sendQuickPrompt(text) {
+            document.getElementById('userQueryInput').value = text;
+            executeAiRequest(text);
+        }
+
+        function submitAiQuery(e) {
+            e.preventDefault();
+            let query = document.getElementById('userQueryInput').value;
+            executeAiRequest(query);
+        }
+
+        function executeAiRequest(query) {
+            if (!query || !query.trim()) return;
+
+            let responseBox = document.getElementById('aiResponseBox');
+            let askBtn = document.getElementById('askBtn');
+
+            askBtn.disabled = true;
+            responseBox.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-success" role="status"></div><p class="mt-2 text-muted fw-semibold">Chef AI is preparing lucrative dish descriptions...</p></div>';
+
+            let formData = new FormData();
+            formData.append('userQuery', query);
+
+            let csrfToken = document.querySelector('input[name="_csrf"]')?.value || '';
+
+            fetch('/ai-assistant/query', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                askBtn.disabled = false;
+                if (data && data.answerHtml) {
+                    responseBox.innerHTML = data.answerHtml;
+                } else {
+                    responseBox.innerHTML = '<div class="alert alert-warning">No response received. Please try again!</div>';
+                }
+            })
+            .catch(err => {
+                askBtn.disabled = false;
+                responseBox.innerHTML = '<div class="alert alert-danger">Error connecting to AI Assistant service. Please try again!</div>';
+            });
+        }
+    </script>
+
+</body>
+</html>

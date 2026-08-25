@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Checkout - Restaurant Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        .bg-bd-emerald { background-color: #006a4e !important; color: white !important; }
+        .bg-bd-red { background-color: #f42a41 !important; color: white !important; }
+        .bg-bkash { background-color: #e2136e !important; color: white !important; }
+        .bg-nagad { background-color: #f7921e !important; color: white !important; }
+        .bg-rocket { background-color: #8c3494 !important; color: white !important; }
+    </style>
+</head>
+<body class="bg-light">
+
+    <!-- Professional Enterprise Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-bd-emerald shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2" href="/menu"><i class="bi bi-shop text-warning fs-3"></i> Restaurant Pro <span class="badge bg-bd-red fs-6 font-monospace">BD Edition</span></a>
+            <div class="collapse navbar-collapse">
+                <div class="navbar-nav me-auto">
+                    <!-- Admin Only -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/">Dashboard</a>
+                    
+                    <!-- Public / Everyone -->
+                    <a class="nav-link" href="/menu">Browse Menu</a>
+                    
+                    <!-- Customer Only -->
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/orders/new">Place Order</a>
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/ai-assistant">Chef Recommendations</a>
+                    
+                    <!-- Staff & Admin Only -->
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders">All Orders</a>
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders/new">POS Order Entry</a>
+                    
+                    <!-- Admin Only Management -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/categories">Categories</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/add-food">Add New Dish</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/ai-assistant">Chef Recommendations</a>
+                </div>
+                
+                <div class="d-flex align-items-center gap-2">
+                    <span sec:authorize="isAuthenticated()" class="badge bg-light text-dark fw-semibold px-3 py-2">
+                        <span sec:authentication="name">User</span> 
+                        (<span sec:authorize="hasRole('ADMIN')">ADMIN</span><span sec:authorize="hasRole('STAFF')">STAFF</span><span sec:authorize="hasRole('CUSTOMER')">CUSTOMER</span>)
+                    </span>
+                    <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-light btn-sm fw-semibold">Logout</button>
+                    </form>
+                    <a sec:authorize="isAnonymous()" href="/login" class="btn btn-outline-light btn-sm fw-semibold">Sign In</a>
+                    <a sec:authorize="isAnonymous()" href="/register" class="btn btn-warning btn-sm fw-semibold text-dark">Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4 mb-5">
+        <div class="row justify-content-center">
+            <div class="col-md-9">
+                
+                <div class="card shadow p-4 rounded-4">
+                    <div class="border-bottom pb-3 mb-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="fw-bold mb-0">Payment Settlement</h3>
+                            <span class="text-muted" th:text="'Order #' + ${order.id} + ' | Customer: ' + ${order.customerName} + ' (' + ${order.customerPhone} + ')'">Order Info</span>
+                        </div>
+                        <span class="badge bg-warning text-dark fs-6">Status: PENDING PAYMENT</span>
+                    </div>
+
+                    <!-- Order Details Summary -->
+                    <div class="row mb-3 bg-light p-3 rounded-3 mx-0 border">
+                        <div class="col-md-3">
+                            <strong>Service Mode:</strong><br>
+                            <span class="badge bg-success fs-6" th:text="${order.orderType != null ? order.orderType : 'Dine-in'}">Dine-in</span>
+                        </div>
+                        <div class="col-md-5">
+                            <span th:if="${order.orderType == 'Delivery'}">
+                                <strong>Delivery Address:</strong><br>
+                                <span class="fw-bold text-dark" th:text="${order.deliveryAddress + ' (' + order.deliveryZone + ')'}">House #, Road #, Area</span>
+                            </span>
+                            <span th:if="${order.orderType != 'Delivery'}">
+                                <strong>Table Location:</strong><br>
+                                <span class="fw-bold text-dark" th:text="${order.tableNumber != null ? order.tableNumber : 'Table Service'}">Table 01</span>
+                            </span>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <strong>Order Date & Time:</strong><br>
+                            <strong th:text="${#temporals.format(order.orderTime, 'dd MMM yyyy, HH:mm')}">Date</strong>
+                        </div>
+                    </div>
+
+                    <!-- Line Items Summary -->
+                    <h5 class="fw-bold mb-3">Order Line-Items</h5>
+                    <table class="table table-bordered mb-3 align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Item</th>
+                                <th>Unit Price</th>
+                                <th>Quantity</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="entry : ${itemQuantities}">
+                                <td class="fw-bold">
+                                    <img th:src="${entry.key.imageUrlOrDefault}" alt="Food" class="rounded me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                    <span th:text="${entry.key.name}">Dish Name</span>
+                                </td>
+                                <td th:text="'৳' + ${#numbers.formatDecimal(entry.key.price, 1, 2)}">৳0.00</td>
+                                <td th:text="${entry.value}">1</td>
+                                <td class="text-end fw-bold" th:text="'৳' + ${#numbers.formatDecimal(entry.key.price * entry.value, 1, 2)}">৳0.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Price Breakdown Box -->
+                    <div class="card p-3 mb-4 bg-light border">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Subtotal:</span>
+                            <span class="fw-bold" th:text="'৳' + ${#numbers.formatDecimal(order.subtotalAmount != null ? order.subtotalAmount : order.totalAmount, 1, 2)}">৳0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1 text-muted">
+                            <span>Govt VAT (5%):</span>
+                            <span th:text="'+৳' + ${#numbers.formatDecimal(order.vatAmount != null ? order.vatAmount : 0, 1, 2)}">+৳0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1 text-muted">
+                            <span>Delivery Charge:</span>
+                            <span th:text="'+৳' + ${#numbers.formatDecimal(order.deliveryFee != null ? order.deliveryFee : 0, 1, 2)}">+৳0.00</span>
+                        </div>
+                        <div th:if="${order.discountAmount != null and order.discountAmount > 0}" class="d-flex justify-content-between mb-1 text-danger">
+                            <span>Promo Discount (<span th:text="${order.promoCode}">CODE</span>):</span>
+                            <span th:text="'-৳' + ${#numbers.formatDecimal(order.discountAmount, 1, 2)}">-৳0.00</span>
+                        </div>
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between fs-4 fw-bold text-success">
+                            <span>Payable Amount:</span>
+                            <span th:text="'৳' + ${#numbers.formatDecimal(order.totalAmount, 1, 2)}">৳0.00 BDT</span>
+                        </div>
+                    </div>
+
+                    <!-- Payment Method Selection Form -->
+                    <h5 class="fw-bold mb-3">Select Payment Method</h5>
+                    <form th:action="@{/orders/{id}/pay(id=${order.id})}" method="post">
+                        
+                        <div class="row g-2 mb-4">
+                            <div class="col-md-4 col-6">
+                                <input type="radio" class="btn-check" name="paymentMethod" id="methodBkash" value="BKASH" checked>
+                                <label class="btn btn-outline-danger w-100 py-3 fw-bold shadow-sm" for="methodBkash" style="border-color: #e2136e;">
+                                    bKash (Merchant)
+                                </label>
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <input type="radio" class="btn-check" name="paymentMethod" id="methodNagad" value="NAGAD">
+                                <label class="btn btn-outline-warning text-dark w-100 py-3 fw-bold shadow-sm" for="methodNagad">
+                                    Nagad (Merchant)
+                                </label>
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <input type="radio" class="btn-check" name="paymentMethod" id="methodRocket" value="ROCKET">
+                                <label class="btn btn-outline-primary w-100 py-3 fw-bold shadow-sm" for="methodRocket" style="border-color: #8c3494;">
+                                    Rocket
+                                </label>
+                            </div>
+                            <div class="col-md-6 col-6">
+                                <input type="radio" class="btn-check" name="paymentMethod" id="methodCard" value="CARD">
+                                <label class="btn btn-outline-secondary w-100 py-3 fw-bold shadow-sm text-dark" for="methodCard">
+                                    Visa / Mastercard / Card
+                                </label>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <input type="radio" class="btn-check" name="paymentMethod" id="methodCash" value="CASH">
+                                <label class="btn btn-outline-success w-100 py-3 fw-bold shadow-sm" for="methodCash">
+                                    Cash on Delivery / Counter
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Merchant Information Banner -->
+                        <div class="alert alert-info border-info d-flex align-items-center gap-3 mb-4">
+                            <div>
+                                <strong>bKash / Nagad Merchant Account Number:</strong> <code class="fs-5 fw-bold text-dark">01700-123456</code><br>
+                                <small class="text-muted">Send Payment to this Merchant number and enter your 10-digit bKash / Nagad Transaction ID (TrxID) below.</small>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Customer MFS Mobile Number</label>
+                                <input type="tel" name="mfsNumber" class="form-control form-control-lg" placeholder="017xx-xxxxxx" th:value="${order.customerPhone}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">bKash / Nagad TrxID (Transaction ID)</label>
+                                <input type="text" name="transactionId" class="form-control form-control-lg" placeholder="e.g. 9J87AK210X (Leave blank for cash)">
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm">
+                                Confirm & Complete Payment (৳<span th:text="${#numbers.formatDecimal(order.totalAmount, 1, 2)}">0.00</span> BDT)
+                            </button>
+                            <a href="/orders" class="btn btn-outline-secondary btn-lg">Back to Orders</a>
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Restaurant Menu - Restaurant Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        .bg-bd-emerald { background-color: #006a4e !important; color: white !important; }
+        .bg-bd-red { background-color: #f42a41 !important; color: white !important; }
+    </style>
+</head>
+<body class="bg-light">
+
+    <!-- Professional Enterprise Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-bd-emerald shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2" href="/menu"><i class="bi bi-shop text-warning fs-3"></i> Restaurant Pro <span class="badge bg-bd-red fs-6 font-monospace">BD Edition</span></a>
+            <div class="collapse navbar-collapse">
+                <div class="navbar-nav me-auto">
+                    <!-- Admin Only -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/">Dashboard</a>
+                    
+                    <!-- Public / Everyone -->
+                    <a class="nav-link active fw-bold" href="/menu">Browse Menu</a>
+                    
+                    <!-- Customer Only -->
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/orders/new">Place Order</a>
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/ai-assistant">Chef Recommendations</a>
+                    
+                    <!-- Staff & Admin Only -->
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders">All Orders</a>
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders/new">POS Order Entry</a>
+                    
+                    <!-- Admin Only Management -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/categories">Categories</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/add-food">Add New Dish</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/ai-assistant">Chef Recommendations</a>
+                </div>
+                
+                <div class="d-flex align-items-center gap-2">
+                    <span sec:authorize="isAuthenticated()" class="badge bg-light text-dark fw-semibold px-3 py-2">
+                        <span sec:authentication="name">User</span> 
+                        (<span sec:authorize="hasRole('ADMIN')">ADMIN</span><span sec:authorize="hasRole('STAFF')">STAFF</span><span sec:authorize="hasRole('CUSTOMER')">CUSTOMER</span>)
+                    </span>
+                    <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-light btn-sm fw-semibold">Logout</button>
+                    </form>
+                    <a sec:authorize="isAnonymous()" href="/login" class="btn btn-outline-light btn-sm fw-semibold">Sign In</a>
+                    <a sec:authorize="isAnonymous()" href="/register" class="btn btn-warning btn-sm fw-semibold text-dark">Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4 mb-5">
+
+        <!-- Alerts -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${success}">Success message</span>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span th:text="${error}">Error message</span>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="fw-bold mb-0">Authentic Bangladeshi Menu Card</h2>
+            <div class="d-flex gap-2">
+                <a sec:authorize="hasRole('CUSTOMER')" href="/orders/new" class="btn btn-success fw-bold px-3">Order Online</a>
+                <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" href="/orders/new" class="btn btn-success fw-bold px-3">New POS Order</a>
+                <a sec:authorize="hasRole('ADMIN')" href="/add-food" class="btn btn-dark fw-bold px-3">+ Add Dish</a>
+            </div>
+        </div>
+
+        <!-- Category Filter Pills -->
+        <div class="card p-3 shadow-sm mb-4 rounded-4">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <strong class="me-2 text-muted">Filter Category:</strong>
+                <a th:href="@{/menu}" 
+                   class="btn btn-sm fw-bold" 
+                   th:classappend="${selectedCategoryId == null or selectedCategoryId == 0} ? 'btn-dark' : 'btn-outline-dark'">
+                   All Categories
+                </a>
+                <a th:each="cat : ${categories}" 
+                   th:href="@{/menu(categoryId=${cat.id})}" 
+                   class="btn btn-sm fw-bold" 
+                   th:classappend="${selectedCategoryId == cat.id} ? 'btn-dark' : 'btn-outline-dark'"
+                   th:text="${cat.name}">
+                   Category Name
+                </a>
+            </div>
+        </div>
+
+        <!-- Food List Table -->
+        <div class="card shadow-sm p-3 rounded-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Photo</th>
+                            <th>Dish Name</th>
+                            <th>Category</th>
+                            <th>Spice Level</th>
+                            <th>Price (BDT)</th>
+                            <th>Chef's Description</th>
+                            <th sec:authorize="hasRole('ADMIN')" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="food : ${foodList}">
+                            <td>
+                                <img th:src="${food.imageUrlOrDefault}" alt="Food Image" class="rounded-3 shadow-sm" style="width: 65px; height: 65px; object-fit: cover;">
+                            </td>
+                            <td>
+                                <strong class="fs-6 text-dark" th:text="${food.name}">Item Name</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-success" th:text="${food.category != null ? food.category.name : 'Unassigned'}">Category</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-warning text-dark" th:text="${food.spiceLevel != null ? food.spiceLevel : 'Medium'}">Medium</span>
+                            </td>
+                            <td class="text-success fw-bold fs-5" th:text="'৳' + ${#numbers.formatDecimal(food.price, 1, 2)}">৳0.00</td>
+                            <td class="text-muted small" style="max-width: 250px;" th:text="${food.description}">Description</td>
+                            <td sec:authorize="hasRole('ADMIN')" class="text-end">
+                                <a th:href="@{/edit-food/{id}(id=${food.id})}" class="btn btn-sm btn-outline-primary me-1">Edit</a>
+                                <a th:href="@{/delete-food/{id}(id=${food.id})}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this dish?')">Delete</a>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(foodList)}">
+                            <td colspan="7" class="text-center text-muted">No food items found for this category.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
