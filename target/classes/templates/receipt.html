@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Restaurant Memo Receipt - Restaurant Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        .bg-bd-emerald { background-color: #006a4e !important; color: white !important; }
+        .bg-bd-red { background-color: #f42a41 !important; color: white !important; }
+        @media print {
+            .no-print { display: none !important; }
+            .card { border: none !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+    <!-- Professional Enterprise Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-bd-emerald no-print shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2" href="/menu"><i class="bi bi-shop text-warning fs-3"></i> Restaurant Pro <span class="badge bg-bd-red fs-6 font-monospace">BD Edition</span></a>
+            <div class="collapse navbar-collapse">
+                <div class="navbar-nav me-auto">
+                    <!-- Admin Only -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/">Dashboard</a>
+                    
+                    <!-- Public / Everyone -->
+                    <a class="nav-link" href="/menu">Browse Menu</a>
+                    
+                    <!-- Customer Only -->
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/orders/new">Place Order</a>
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/ai-assistant">Chef Recommendations</a>
+                    
+                    <!-- Staff & Admin Only -->
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders">All Orders</a>
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders/new">POS Order Entry</a>
+                    
+                    <!-- Admin Only Management -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/categories">Categories</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/add-food">Add New Dish</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/ai-assistant">Chef Recommendations</a>
+                </div>
+                
+                <div class="d-flex align-items-center gap-2">
+                    <span sec:authorize="isAuthenticated()" class="badge bg-light text-dark fw-semibold px-3 py-2">
+                        <span sec:authentication="name">User</span> 
+                        (<span sec:authorize="hasRole('ADMIN')">ADMIN</span><span sec:authorize="hasRole('STAFF')">STAFF</span><span sec:authorize="hasRole('CUSTOMER')">CUSTOMER</span>)
+                    </span>
+                    <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-light btn-sm fw-semibold">Logout</button>
+                    </form>
+                    <a sec:authorize="isAnonymous()" href="/login" class="btn btn-outline-light btn-sm fw-semibold">Sign In</a>
+                    <a sec:authorize="isAnonymous()" href="/register" class="btn btn-warning btn-sm fw-semibold text-dark">Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4 mb-5">
+
+        <!-- Alerts -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show no-print" role="alert">
+            <span th:text="${success}">Success message</span>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                
+                <div class="card shadow p-4 rounded-4 bg-white" id="printableReceipt">
+                    <!-- Bangladeshi Restaurant Memo Header -->
+                    <div class="text-center border-bottom pb-3 mb-3">
+                        <h2 class="fw-bold mb-1 text-dark">RESTAURANT PRO</h2>
+                        <p class="text-muted mb-1 fw-semibold">House 42, Road 11, Banani, Dhaka-1213, Bangladesh</p>
+                        <p class="text-muted small mb-1">NBR VAT BIN Reg No: <strong>001928374-0101</strong></p>
+                        <p class="text-muted small mb-0">Hotline: <strong>+880 1700-123456</strong> | bKash Merchant: <strong>01700-123456</strong></p>
+                    </div>
+
+                    <!-- Invoice & Customer Info -->
+                    <div class="d-flex justify-content-between mb-3 bg-light p-3 rounded-3 border">
+                        <div>
+                            <h5 class="fw-bold mb-1" th:text="'MEMO INVOICE #' + ${order.id}">MEMO INVOICE #1001</h5>
+                            <small class="text-dark fw-bold" th:text="'Customer: ' + ${order.customerName} + ' (' + ${order.customerPhone} + ')'">John Doe</small><br>
+                            <small th:if="${order.orderType == 'Delivery'}" class="text-muted" th:text="'Service: Home Delivery | Address: ' + ${order.deliveryAddress + ' (' + order.deliveryZone + ')'}">Delivery Address</small>
+                            <small th:if="${order.orderType != 'Delivery'}" class="text-muted" th:text="'Service: ' + ${order.orderType} + ' | Table: ' + ${order.tableNumber}">Table 01</small>
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted">Date & Time:</small><br>
+                            <strong class="text-dark" th:text="${#temporals.format(order.orderTime, 'dd MMM yyyy, HH:mm')}">Date</strong>
+                        </div>
+                    </div>
+
+                    <!-- Payment Status Box -->
+                    <div class="p-3 mb-4 rounded-3 d-flex justify-content-between align-items-center"
+                         th:classappend="${order.payment != null and order.payment.status == 'COMPLETED'} ? 'bg-success-subtle text-success border border-success' : 'bg-warning-subtle text-warning border border-warning'">
+                        <div>
+                            <strong class="fs-5" th:text="${order.payment != null and order.payment.status == 'COMPLETED'} ? 'Payment Status: PAID' : 'Payment Status: PENDING'">Status</strong><br>
+                            <small th:if="${order.payment != null}" th:text="'Method: ' + ${order.payment.paymentMethod} + ' | TrxID: ' + ${order.payment.transactionId}">Method</small>
+                        </div>
+                        <h3 class="fw-bold mb-0" th:text="'৳' + ${#numbers.formatDecimal(order.totalAmount, 1, 2)}">৳0.00</h3>
+                    </div>
+
+                    <!-- Items Table -->
+                    <table class="table table-sm table-bordered mb-3 align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Item Description</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Unit Price (BDT)</th>
+                                <th class="text-end">Total (BDT)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="entry : ${itemQuantities}">
+                                <td class="fw-bold">
+                                    <img th:src="${entry.key.imageUrlOrDefault}" alt="Food" class="rounded me-2" style="width: 35px; height: 35px; object-fit: cover;">
+                                    <span th:text="${entry.key.name}">Dish Name</span>
+                                </td>
+                                <td class="text-center fw-bold" th:text="${entry.value}">1</td>
+                                <td class="text-end" th:text="'৳' + ${#numbers.formatDecimal(entry.key.price, 1, 2)}">৳0.00</td>
+                                <td class="text-end fw-bold" th:text="'৳' + ${#numbers.formatDecimal(entry.key.price * entry.value, 1, 2)}">৳0.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Price Calculation Table -->
+                    <div class="card p-3 mb-4 bg-light border">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Item Subtotal:</span>
+                            <span class="fw-bold" th:text="'৳' + ${#numbers.formatDecimal(order.subtotalAmount != null ? order.subtotalAmount : order.totalAmount, 1, 2)}">৳0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1 text-muted">
+                            <span>Govt VAT (5%):</span>
+                            <span th:text="'+৳' + ${#numbers.formatDecimal(order.vatAmount != null ? order.vatAmount : 0, 1, 2)}">+৳0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1 text-muted">
+                            <span>Delivery Charge:</span>
+                            <span th:text="'+৳' + ${#numbers.formatDecimal(order.deliveryFee != null ? order.deliveryFee : 0, 1, 2)}">+৳0.00</span>
+                        </div>
+                        <div th:if="${order.discountAmount != null and order.discountAmount > 0}" class="d-flex justify-content-between mb-1 text-danger">
+                            <span>Promo Discount (<span th:text="${order.promoCode}">CODE</span>):</span>
+                            <span th:text="'-৳' + ${#numbers.formatDecimal(order.discountAmount, 1, 2)}">-৳0.00</span>
+                        </div>
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between fs-4 fw-bold text-success">
+                            <span>Grand Total:</span>
+                            <span th:text="'৳' + ${#numbers.formatDecimal(order.totalAmount, 1, 2)}">৳0.00 BDT</span>
+                        </div>
+                    </div>
+
+                    <div class="text-center text-muted small border-top pt-3 mb-3">
+                        <p class="mb-1 fw-bold text-dark">ধন্যবাদ! আবার আসবেন। Thank you for dining with us!</p>
+                        <p class="mb-0">For order inquiries, call +880 1700-123456</p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2 no-print">
+                        <button onclick="window.print()" class="btn btn-dark w-100 fw-bold">Print Customer Memo</button>
+                        <a href="/orders" class="btn btn-outline-secondary w-100 fw-bold">Back to Orders List</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

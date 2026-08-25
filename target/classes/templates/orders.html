@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Customer Orders - Restaurant Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        .bg-bd-emerald { background-color: #006a4e !important; color: white !important; }
+        .bg-bd-red { background-color: #f42a41 !important; color: white !important; }
+    </style>
+</head>
+<body class="bg-light">
+
+    <!-- Professional Enterprise Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-bd-emerald shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2" href="/menu"><i class="bi bi-shop text-warning fs-3"></i> Restaurant Pro <span class="badge bg-bd-red fs-6 font-monospace">BD Edition</span></a>
+            <div class="collapse navbar-collapse">
+                <div class="navbar-nav me-auto">
+                    <!-- Admin Only -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/">Dashboard</a>
+                    
+                    <!-- Public / Everyone -->
+                    <a class="nav-link" href="/menu">Browse Menu</a>
+                    
+                    <!-- Customer Only -->
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/orders/new">Place Order</a>
+                    <a sec:authorize="hasRole('CUSTOMER')" class="nav-link" href="/ai-assistant">Chef Recommendations</a>
+                    
+                    <!-- Staff & Admin Only -->
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link active fw-bold" href="/orders">All Orders</a>
+                    <a sec:authorize="hasAnyRole('ADMIN', 'STAFF')" class="nav-link" href="/orders/new">POS Order Entry</a>
+                    
+                    <!-- Admin Only Management -->
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/categories">Categories</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/add-food">Add New Dish</a>
+                    <a sec:authorize="hasRole('ADMIN')" class="nav-link" href="/ai-assistant">Chef Recommendations</a>
+                </div>
+                
+                <div class="d-flex align-items-center gap-2">
+                    <span sec:authorize="isAuthenticated()" class="badge bg-light text-dark fw-semibold px-3 py-2">
+                        <span sec:authentication="name">User</span> 
+                        (<span sec:authorize="hasRole('ADMIN')">ADMIN</span><span sec:authorize="hasRole('STAFF')">STAFF</span><span sec:authorize="hasRole('CUSTOMER')">CUSTOMER</span>)
+                    </span>
+                    <form sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-light btn-sm fw-semibold">Logout</button>
+                    </form>
+                    <a sec:authorize="isAnonymous()" href="/login" class="btn btn-outline-light btn-sm fw-semibold">Sign In</a>
+                    <a sec:authorize="isAnonymous()" href="/register" class="btn btn-warning btn-sm fw-semibold text-dark">Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4 mb-5">
+
+        <!-- Alerts -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${success}">Success message</span>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span th:text="${error}">Error message</span>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="fw-bold">All Customer Orders & Billing</h2>
+            <a href="/orders/new" class="btn btn-success fw-bold">+ New Order (Dine-in / Delivery)</a>
+        </div>
+
+        <div class="card shadow-sm p-3 rounded-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer Info</th>
+                            <th>Type</th>
+                            <th>Table / Delivery Address</th>
+                            <th>Date / Time</th>
+                            <th>Items</th>
+                            <th>Total (BDT)</th>
+                            <th>Payment Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="ord : ${orders}">
+                            <td class="fw-bold text-dark" th:text="'#' + ${ord.id}">#1</td>
+                            <td>
+                                <strong th:text="${ord.customerName}">John Doe</strong><br>
+                                <small class="text-muted" th:text="${ord.customerPhone != null ? ord.customerPhone : ''}">017xx</small>
+                            </td>
+                            <td>
+                                <span class="badge" th:classappend="${ord.orderType == 'Delivery'} ? 'bg-success' : 'bg-info text-dark'" th:text="${ord.orderType != null ? ord.orderType : 'Dine-in'}">Dine-in</span>
+                            </td>
+                            <td>
+                                <span th:if="${ord.orderType == 'Delivery'}" class="small text-dark fw-semibold" th:text="${ord.deliveryAddress + ' (' + ord.deliveryZone + ')'}">Delivery Address</span>
+                                <span th:if="${ord.orderType != 'Delivery'}" class="badge bg-secondary" th:text="${ord.tableNumber}">Table 1</span>
+                            </td>
+                            <td class="small" th:text="${#temporals.format(ord.orderTime, 'dd MMM yyyy, HH:mm')}">20 Aug 2026, 14:00</td>
+                            <td th:text="${ord.foodItems != null ? ord.foodItems.size() : 0}">0 items</td>
+                            <td class="fw-bold text-success fs-6" th:text="'৳' + ${#numbers.formatDecimal(ord.totalAmount, 1, 2)}">৳0.00</td>
+                            <td>
+                                <span th:if="${ord.payment != null and ord.payment.status == 'COMPLETED'}" class="badge bg-success">PAID (<span th:text="${ord.payment.paymentMethod}">bKash</span>)</span>
+                                <span th:if="${ord.payment == null or ord.payment.status != 'COMPLETED'}" class="badge bg-warning text-dark">PENDING PAYMENT</span>
+                            </td>
+                            <td class="text-end">
+                                <a th:if="${ord.payment == null or ord.payment.status != 'COMPLETED'}" 
+                                   th:href="@{/orders/{id}/checkout(id=${ord.id})}" 
+                                   class="btn btn-sm btn-success fw-bold">Pay Now</a>
+                                <a th:href="@{/orders/{id}(id=${ord.id})}" 
+                                   class="btn btn-sm btn-outline-dark">Memo Receipt</a>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(orders)}">
+                            <td colspan="9" class="text-center text-muted py-4">No customer orders recorded yet. Click "+ New Order" to create one!</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>
